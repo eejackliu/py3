@@ -4,6 +4,12 @@ from PIL import Image as image
 import os
 from skimage import io,transform
 import numpy as np
+voc_colormap = [[0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
+                [0, 0, 128], [128, 0, 128], [0, 128, 128], [128, 128, 128],
+                [64, 0, 0], [192, 0, 0], [64, 128, 0], [192, 128, 0],
+                [64, 0, 128], [192, 0, 128], [64, 128, 128], [192, 128, 128],
+                [0, 64, 0], [128, 64, 0], [0, 192, 0], [128, 192, 0],
+                [0, 64, 128]]
 class pascal_data(data.Dataset):
     root="data/VOCdevkit/VOC2012/"
     tmp = open("data/VOCdevkit/VOC2012/ImageSets/Segmentation/train.txt").readlines()
@@ -71,16 +77,23 @@ class Normalize(object):
         image=output['image']
         seg=output['seg']
         a=(image/255.0-self.mean)/self.std
-        b=(seg/255.0-self.mean)/self.std
-        return {"image":a,"seg":b}
+        # b=(seg/255.0-self.mean)/self.std
+        return {"image":a,"seg":seg}
 
 class Totensor(object):
+    def __init__(self):
+        self.class_index=np.zeros(256**3)
+        for i,j in enumerate(voc_colormap):
+            tmp=(j[0]*256+j[1])*256+j[2]
+            self.class_index[tmp]=i
+
     def __call__(self, sample):
         image,target=sample['image'],sample['seg']
         image=np.transpose(image,axes=(2,0,1))
         target=np.transpose(target,axes=(2,0,1))
-
-        return {'image':torch.from_numpy(image).float(),'seg':torch.from_numpy(target).float()}
+        target=(target[0]*256+target[1])*256+target[2]
+        target=self.class_index[target]
+        return {'image':torch.from_numpy(image).float(),'seg':torch.from_numpy(target).long()}
 
 
 
