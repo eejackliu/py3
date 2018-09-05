@@ -7,46 +7,46 @@ import torchvision.models as model
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import numpy as np
-transform=transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])
-trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=4,
-                                          shuffle=True, num_workers=2)
-testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                       download=True, transform=transform)
-testloader = torch.utils.data.DataLoader(testset, batch_size=4,
-                                         shuffle=False, num_workers=2)
-classes = ('plane', 'car', 'bird', 'cat',
-           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-#%%
-import torch.optim as optim
-class Net(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv1=nn.Conv2d(3,6,3,padding=1)
-        self.pool1=nn.MaxPool2d(2,2)
-        self.conv2=nn.Conv2d(6,16,3,padding=1)
-        self.pool2=nn.MaxPool2d(2,2)
-        self.fc1=nn.Linear(16*8*8,120)
-        self.fc2=nn.Linear(120,10)
-    def forward(self, *input):
-        x=self.pool1(self.conv1(input))
-        x=self.pool2(self.conv2(x))
-        x=x.view(-1,16*8*8)
-        x=f.relu(self.fc1(x))
-        x=f.relu(self.fc2(x))
-        return x
-#%%
-
-# para=list(vgg.children())[1]
-# print(para)
-#%%
-
-#%%
-def imshow(img):
-    img=img*0.5+0.5
-    npimg=img.numpy()
-    plt.imshow(np.transpose(npimg,(1,2,0))) # thanspose from (CHW) to(HWC)
+# transform=transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])
+# trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+#                                         download=True, transform=transform)
+# trainloader = torch.utils.data.DataLoader(trainset, batch_size=4,
+#                                           shuffle=True, num_workers=2)
+# testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+#                                        download=True, transform=transform)
+# testloader = torch.utils.data.DataLoader(testset, batch_size=4,
+#                                          shuffle=False, num_workers=2)
+# classes = ('plane', 'car', 'bird', 'cat',
+#            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+# #%%
+# import torch.optim as optim
+# class Net(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.conv1=nn.Conv2d(3,6,3,padding=1)
+#         self.pool1=nn.MaxPool2d(2,2)
+#         self.conv2=nn.Conv2d(6,16,3,padding=1)
+#         self.pool2=nn.MaxPool2d(2,2)
+#         self.fc1=nn.Linear(16*8*8,120)
+#         self.fc2=nn.Linear(120,10)
+#     def forward(self, *input):
+#         x=self.pool1(self.conv1(input))
+#         x=self.pool2(self.conv2(x))
+#         x=x.view(-1,16*8*8)
+#         x=f.relu(self.fc1(x))
+#         x=f.relu(self.fc2(x))
+#         return x
+# #%%
+#
+# # para=list(vgg.children())[1]
+# # print(para)
+# #%%
+#
+# #%%
+# def imshow(img):
+#     img=img*0.5+0.5
+#     npimg=img.numpy()
+#     plt.imshow(np.transpose(npimg,(1,2,0))) # thanspose from (CHW) to(HWC)
 # tran_conv=nn.ConvTranspose2d(3,3,kernel_size=4,padding=1,stride=2)
 # tran_conv.weight=torch.nn.Parameter(torch.from_numpy(bilinear_kernel(3,3,4)))
 # out=tran_conv(a)
@@ -73,10 +73,14 @@ voc_classes = ['background', 'aeroplane', 'bicycle', 'bird', 'boat',
                'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
                'diningtable', 'dog', 'horse', 'motorbike', 'person',
                'potted plant', 'sheep', 'sofa', 'train', 'tv/monitor']
-transform=transforms.Compose([pascal.Randomcrop(224),pascal.Normalize((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)),pascal.Totensor()])
-trainset=pascal.pascal_data("train",transform)
-a=torch.utils.data.DataLoader(trainset,4,shuffle=True)
-train_data=iter(a)
+transform=transforms.Compose([pascal.Randomcrop((224,224)),pascal.Normalize((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)),pascal.Totensor()])
+trainset=pascal.pascal_data((224,224),"train",transform)
+def my_collate_fn(batch):
+    item=list(filter(lambda x:x is  not None,batch))
+    # print(batch)
+    return torch.utils.data.dataloader.default_collate(item)
+a=torch.utils.data.DataLoader(trainset,4,shuffle=True,collate_fn=my_collate_fn)
+# train_data=iter(a)
 vgg=model.vgg16(pretrained=True)
 class Fcn(nn.Module):
     def __init__(self):
@@ -123,25 +127,31 @@ def picture(tmp):
 fcn=Fcn()
 out=nn.Softmax2d()
 criterion=nn.CrossEntropyLoss()
-optimize=optim.SGD(fcn.parameters(),lr=0.001)
-
-
-tmp=next(train_data)
-input_data,lable_data=tmp['image'],tmp['seg']
-optimize.zero_grad()
-output=fcn(input_data)
-print(output.size())
-print(lable_data.size())
-loss=f.softmax(output,dim=1)
-loss=criterion(loss,lable_data)
-loss.item
-optimize.step()
+optimize=optim.SGD(fcn.parameters(),lr=0.001,momentum=0.9)
+device=torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
+# fcn=fcn.to(device)
+for i in range(1):
+    # tmp=next(train_data)
+    for m in  a:
+        # input_data,lable_data=tmp['image'],tmp['seg']
+        input_data,lable_data=m['image'],m['seg']
+        print(input_data.shape)
+        # input_data,lable_data=input_data.to(device),lable_data.to(device)
+        optimize.zero_grad()
+        output=fcn(input_data)
+        # print(output.size())
+        # print(lable_data.size())
+        loss=f.softmax(output,dim=1)
+        loss=criterion(loss,lable_data)
+        print (loss)
+        loss.backward()
+        optimize.step()
+        break
 tmp=next(train_data)
 test=fcn(tmp['image'])
 
 
 #%%
-import numpy as np
 # np.set_printoptions(threshold=np.inf)
 
 # colormap2label = np.zeros(48**3)

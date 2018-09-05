@@ -22,18 +22,27 @@ class pascal_data(data.Dataset):
     tmp = open("data/VOCdevkit/VOC2012/ImageSets/Segmentation/trainval.txt").readlines()
     tmp = [i.strip("\n") for i in tmp]
     paration["trainval"] = tmp
-    def __init__(self,data_type="train",transorms=None):
+    def __init__(self,size,data_type="train",transorms=None):
         # self.label=labels
         # self.list_id=list_ids
         self.idx=self.paration[data_type]
         self.transorms=transorms
+        if isinstance(size,tuple):
+            self.h,self.w=size
+        else:
+            self.h=self.w=size
+
     def __len__(self):
         return len(self.idx)
+
     def __getitem__(self, item):
         id=self.idx[item]
         # x=torch.load(self.root+"JPEGImages/"+id+".jpg")
         x=io.imread(self.root+"JPEGImages/"+id+".jpg")
         y=io.imread(self.root+"SegmentationClass/"+id+".png")
+        if x.shape[0]<self.h or x.shape[1]<self.w:
+            return None
+
         if self.transorms:
             return self.transorms({"image":x,"seg":y})
         return {"image":x,"seg":y}
@@ -57,17 +66,18 @@ class Randomcrop(object):
     def __init__(self,output_size):
         assert isinstance(output_size,(int,tuple))
         self.output_size=output_size
+        if isinstance(self.output_size,tuple):
+            self.h,self.w=self.output_size
+        else:
+            self.h=self.w=self.output_size
+
     def __call__(self, sample):
         source,target=sample['image'],sample['seg']
         image_h,image_w=source.shape[:2]
-        if isinstance(self.output_size,tuple):
-            h,w=self.output_size
-        else:
-            h=w=self.output_size
-        top=np.random.randint(0,image_h-h)
-        left=np.random.randint(0,image_w-w)
-        new_source=source[top:top+h,left:left+w]
-        new_target=target[top:top+h,left:left+w]
+        top=np.random.randint(0,image_h- self.h)
+        left=np.random.randint(0,image_w-self.w)
+        new_source=source[top:top+self.h,left:left+self.w]
+        new_target=target[top:top+self.h,left:left+self.w]
         return {"image":new_source,"seg":new_target}
 class Normalize(object):
     def __init__(self,mean,std):
