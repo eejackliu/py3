@@ -4,6 +4,7 @@ from PIL import Image as image
 import os
 from skimage import io,transform
 import numpy as np
+import matplotlib.pyplot as plt
 voc_colormap = [[0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
                 [0, 0, 128], [128, 0, 128], [0, 128, 128], [128, 128, 128],
                 [64, 0, 0], [192, 0, 0], [64, 128, 0], [192, 128, 0],
@@ -11,15 +12,15 @@ voc_colormap = [[0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
                 [0, 64, 0], [128, 64, 0], [0, 192, 0], [128, 192, 0],
                 [0, 64, 128]]
 class pascal_data(data.Dataset):
-    root="data/VOCdevkit/VOC2012/"
-    tmp = open("data/VOCdevkit/VOC2012/ImageSets/Segmentation/train.txt").readlines()
+    root="../torch/data/VOCdevkit/VOC2012/"
+    tmp = open("../torch/data/VOCdevkit/VOC2012/ImageSets/Segmentation/train.txt").readlines()
     tmp = [i.strip("\n") for i in tmp]
     paration = dict()
     paration["train"] = tmp
-    tmp = open("data/VOCdevkit/VOC2012/ImageSets/Segmentation/val.txt").readlines()
+    tmp = open("../torch/data/VOCdevkit/VOC2012/ImageSets/Segmentation/val.txt").readlines()
     tmp = [i.strip("\n") for i in tmp]
     paration["val"] = tmp
-    tmp = open("data/VOCdevkit/VOC2012/ImageSets/Segmentation/trainval.txt").readlines()
+    tmp = open("../torch/data/VOCdevkit/VOC2012/ImageSets/Segmentation/trainval.txt").readlines()
     tmp = [i.strip("\n") for i in tmp]
     paration["trainval"] = tmp
     def __init__(self,size,data_type="train",transorms=None):
@@ -40,7 +41,7 @@ class pascal_data(data.Dataset):
         # x=torch.load(self.root+"JPEGImages/"+id+".jpg")
         x=io.imread(self.root+"JPEGImages/"+id+".jpg")
         y=io.imread(self.root+"SegmentationClass/"+id+".png")
-        if x.shape[0]<self.h or x.shape[1]<self.w:
+        if x.shape[0]<=self.h or x.shape[1]<=self.w:
             return None
 
         if self.transorms:
@@ -74,6 +75,10 @@ class Randomcrop(object):
     def __call__(self, sample):
         source,target=sample['image'],sample['seg']
         image_h,image_w=source.shape[:2]
+        if image_h<self.h:
+            print("image h{} self h".format(image_h,self.h))
+        if image_w<self.w:
+            print("image w{} self w".format(image_w,self.w))
         top=np.random.randint(0,image_h- self.h)
         left=np.random.randint(0,image_w-self.w)
         new_source=source[top:top+self.h,left:left+self.w]
@@ -101,6 +106,7 @@ class Totensor(object):
         image,target=sample['image'],sample['seg']
         image=np.transpose(image,axes=(2,0,1))
         target=np.transpose(target,axes=(2,0,1))
+
         target=(target[0]*256+target[1])*256+target[2]
         target=self.class_index[target]
         return {'image':torch.from_numpy(image).float(),'seg':torch.from_numpy(target).long()}
